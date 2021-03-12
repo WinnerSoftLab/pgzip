@@ -424,6 +424,66 @@ func TestDecompressorResetNoRead(t *testing.T) {
 	}
 }
 
+func TestDecompressorResetUnexpectedEOF(t *testing.T) {
+	data := []byte{31, 139, 8, 0, 0, 9, 110, 136, 0, 255, 0, 237, 4, 18, 251, 123, 34, 117, 114, 108}
+
+	var err error
+	var gzReader *Reader
+	var r *bytes.Reader
+
+	// first read
+	r = bytes.NewReader(data)
+	gzReader, err = NewReaderN(r, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = io.CopyN(ioutil.Discard, gzReader, 40)
+	if err != io.ErrUnexpectedEOF {
+		t.Fatal(err)
+	}
+
+	// second read
+	r = bytes.NewReader(data)
+	err = gzReader.Reset(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = io.CopyN(ioutil.Discard, gzReader, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDecompressorResetWriteToUnexpectedEOF(t *testing.T) {
+	data := []byte{31, 139, 8, 0, 0, 9, 110, 136, 0, 255, 0, 237, 4, 18, 251, 123, 34, 117, 114, 108}
+
+	var err error
+	var gzReader *Reader
+	var r *bytes.Reader
+
+	// first read
+	r = bytes.NewReader(data)
+	gzReader, err = NewReaderN(r, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = gzReader.WriteTo(ioutil.Discard)
+	if err != io.ErrUnexpectedEOF {
+		t.Fatal(err)
+	}
+
+	// second read
+	r = bytes.NewReader(data)
+	err = gzReader.Reset(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = io.CopyN(ioutil.Discard, gzReader, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestIssue6550(t *testing.T) {
 	f, err := os.Open("testdata/issue6550.gz")
 	if err != nil {
