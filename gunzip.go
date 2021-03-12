@@ -456,6 +456,7 @@ func (z *Reader) Read(p []byte) (n int, err error) {
 
 				if read.err != io.EOF {
 					z.err = read.err
+					z.blockPool <- read.b
 					return
 				}
 				if read.err == io.EOF {
@@ -527,6 +528,7 @@ func (z *Reader) WriteTo(w io.Writer) (n int64, err error) {
 
 				if read.err != io.EOF {
 					z.err = read.err
+					z.blockPool <- read.b
 					return total, z.err
 				}
 				if read.err == io.EOF {
@@ -537,10 +539,12 @@ func (z *Reader) WriteTo(w io.Writer) (n int64, err error) {
 			// Write what we got
 			n, err := w.Write(read.b)
 			if n != len(read.b) {
+				z.blockPool <- read.b
 				return total, io.ErrShortWrite
 			}
 			total += int64(n)
 			if err != nil {
+				z.blockPool <- read.b
 				return total, err
 			}
 			// Put block back
